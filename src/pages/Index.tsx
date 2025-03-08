@@ -2,7 +2,7 @@
 import { useEffect, useState } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Activity, Award, Calendar, ChevronUp, Dumbbell, LineChart, LogOut, Plus } from "lucide-react";
+import { Activity, Award, Calendar, ChevronUp, Dumbbell, LineChart, LogOut, Plus, ListFilter } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/components/ui/use-toast";
 import { supabase } from "@/integrations/supabase/client";
@@ -10,6 +10,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import AddWorkoutForm from "@/components/AddWorkoutForm";
 import AddRecordForm from "@/components/AddRecordForm";
 import WorkoutDetails from "@/components/WorkoutDetails";
+import ExerciseList from "@/components/ExerciseList";
 
 // Types for our data
 interface Exercise {
@@ -403,6 +404,7 @@ const Index = () => {
             <TabsTrigger value="dashboard">Dashboard</TabsTrigger>
             <TabsTrigger value="workouts">Workout History</TabsTrigger>
             <TabsTrigger value="records">Personal Records</TabsTrigger>
+            <TabsTrigger value="exercises">Exercise Library</TabsTrigger>
             <TabsTrigger value="progress">Progress Charts</TabsTrigger>
           </TabsList>
 
@@ -537,6 +539,11 @@ const Index = () => {
                 )}
               </CardContent>
             </Card>
+          </TabsContent>
+
+          {/* Exercise Library Tab */}
+          <TabsContent value="exercises" className="space-y-4">
+            <ExerciseList />
           </TabsContent>
 
           {/* Progress Charts Tab */}
