@@ -20,6 +20,8 @@ import { Badge } from "@/components/ui/badge";
 import { Clock, Dumbbell, Flame } from "lucide-react";
 
 interface Exercise {
+  id?: string;
+  workout_id?: string;
   name: string;
   sets: string;
   reps: string;
@@ -29,6 +31,7 @@ interface Exercise {
 interface WorkoutDetailsProps {
   workout: {
     id?: string;
+    user_id?: string;
     name: string;
     date: string;
     duration: string;

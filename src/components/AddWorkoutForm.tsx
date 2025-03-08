@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { useToast } from "@/components/ui/use-toast";
 import { 
   Dialog,
   DialogContent,
@@ -14,6 +15,8 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { Plus } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/contexts/AuthContext";
 
 interface Exercise {
   name: string;
@@ -23,7 +26,10 @@ interface Exercise {
 }
 
 const AddWorkoutForm = () => {
+  const { user } = useAuth();
+  const { toast } = useToast();
   const [open, setOpen] = useState(false);
+  const [loading, setLoading] = useState(false);
   const [workoutName, setWorkoutName] = useState("");
   const [exercises, setExercises] = useState<Exercise[]>([
     { name: "", sets: "", reps: "", weight: "" }
@@ -48,21 +54,83 @@ const AddWorkoutForm = () => {
     }
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    // This will be replaced with Supabase integration later
-    console.log({
-      name: workoutName,
-      date: new Date().toISOString(),
-      exercises,
-      notes
-    });
     
-    // Reset form
-    setWorkoutName("");
-    setExercises([{ name: "", sets: "", reps: "", weight: "" }]);
-    setNotes("");
-    setOpen(false);
+    if (!user) {
+      toast({
+        title: "Authentication required",
+        description: "You must be logged in to add a workout.",
+        variant: "destructive",
+      });
+      return;
+    }
+    
+    setLoading(true);
+    
+    try {
+      // Insert workout
+      const { data: workoutData, error: workoutError } = await supabase
+        .from('workouts')
+        .insert([{
+          user_id: user.id,
+          name: workoutName,
+          date: new Date().toISOString(),
+          duration: "30 min", // This would ideally be a field in the form
+          intensity: "Moderate", // This would ideally be a field in the form
+          notes: notes
+        }])
+        .select();
+
+      if (workoutError) throw workoutError;
+      
+      if (workoutData && workoutData.length > 0) {
+        const workoutId = workoutData[0].id;
+        
+        // Insert exercises
+        const exercisesWithWorkoutId = exercises.map(exercise => ({
+          workout_id: workoutId,
+          name: exercise.name,
+          sets: exercise.sets,
+          reps: exercise.reps,
+          weight: exercise.weight
+        }));
+        
+        const { error: exercisesError } = await supabase
+          .from('exercises')
+          .insert(exercisesWithWorkoutId);
+          
+        if (exercisesError) throw exercisesError;
+        
+        toast({
+          title: "Workout added!",
+          description: "Your workout has been successfully recorded.",
+        });
+        
+        // Log for debugging
+        console.log({
+          name: workoutName,
+          date: new Date().toISOString(),
+          exercises,
+          notes
+        });
+        
+        // Reset form
+        setWorkoutName("");
+        setExercises([{ name: "", sets: "", reps: "", weight: "" }]);
+        setNotes("");
+        setOpen(false);
+      }
+    } catch (error: any) {
+      console.error("Error adding workout:", error);
+      toast({
+        title: "Error adding workout",
+        description: error.message || "There was a problem saving your workout.",
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -185,7 +253,9 @@ const AddWorkoutForm = () => {
             <Button type="button" variant="outline" onClick={() => setOpen(false)}>
               Cancel
             </Button>
-            <Button type="submit">Save Workout</Button>
+            <Button type="submit" disabled={loading}>
+              {loading ? "Saving..." : "Save Workout"}
+            </Button>
           </DialogFooter>
         </form>
       </DialogContent>
