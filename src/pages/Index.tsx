@@ -2,7 +2,7 @@
 import { useEffect, useState } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Activity, Award, Calendar, ChevronUp, Dumbbell, LineChart, LogOut } from "lucide-react";
+import { Activity, Award, Calendar, ChevronUp, Dumbbell, LineChart, LogOut, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/components/ui/use-toast";
 import { supabase } from "@/integrations/supabase/client";
@@ -70,7 +70,7 @@ const Index = () => {
 
       // Fetch exercises for each workout
       const workoutsWithExercises = await Promise.all(
-        workoutsData.map(async (workout) => {
+        (workoutsData || []).map(async (workout) => {
           const { data: exercisesData, error: exercisesError } = await supabase
             .from('exercises')
             .select('*')
@@ -94,7 +94,7 @@ const Index = () => {
         })
       );
 
-      setWorkouts(workoutsWithExercises.length > 0 ? workoutsWithExercises : workoutHistory);
+      setWorkouts(workoutsWithExercises || []);
 
       // Fetch personal records
       const { data: recordsData, error: recordsError } = await supabase
@@ -105,7 +105,7 @@ const Index = () => {
 
       if (recordsError) throw recordsError;
 
-      const formattedRecords = recordsData.map(record => {
+      const formattedRecords = (recordsData || []).map(record => {
         // Format date for display
         const date = new Date(record.date);
         const formattedDate = isToday(date) 
@@ -122,7 +122,7 @@ const Index = () => {
         };
       });
 
-      setRecords(formattedRecords.length > 0 ? formattedRecords : personalRecords);
+      setRecords(formattedRecords || []);
     } catch (error) {
       console.error("Error fetching user data:", error);
       toast({
@@ -183,6 +183,20 @@ const Index = () => {
   // Count new PRs this month
   const newPRsThisMonth = records.filter(r => r.isNew);
 
+  // Empty state component
+  const EmptyState = ({ type, action }: { type: string, action: React.ReactNode }) => (
+    <div className="flex flex-col items-center justify-center py-12 text-center">
+      <div className="bg-gray-100 rounded-full p-4 mb-4">
+        <Plus className="h-8 w-8 text-gray-400" />
+      </div>
+      <h3 className="text-lg font-medium mb-2">No {type} yet</h3>
+      <p className="text-sm text-muted-foreground max-w-md mb-6">
+        Start tracking your fitness journey by adding your first {type.toLowerCase()}.
+      </p>
+      {action}
+    </div>
+  );
+
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Header */}
@@ -220,7 +234,11 @@ const Index = () => {
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">{workouts.length}</div>
-              <p className="text-xs text-muted-foreground">Your lifetime workouts</p>
+              <p className="text-xs text-muted-foreground">
+                {workouts.length === 0 
+                  ? "No workouts recorded yet" 
+                  : "Your lifetime workouts"}
+              </p>
             </CardContent>
           </Card>
           <Card>
@@ -229,8 +247,14 @@ const Index = () => {
               <Calendar className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">7 days</div>
-              <p className="text-xs text-muted-foreground">Keep it up!</p>
+              <div className="text-2xl font-bold">
+                {workouts.length === 0 ? "0 days" : "7 days"}
+              </div>
+              <p className="text-xs text-muted-foreground">
+                {workouts.length === 0 
+                  ? "Start your streak today" 
+                  : "Keep it up!"}
+              </p>
             </CardContent>
           </Card>
           <Card>
@@ -294,9 +318,10 @@ const Index = () => {
                     ))}
                   </div>
                 ) : (
-                  <div className="text-center py-8">
-                    <p className="text-muted-foreground">No workouts yet. Add your first workout!</p>
-                  </div>
+                  <EmptyState 
+                    type="Workouts" 
+                    action={<AddWorkoutForm />} 
+                  />
                 )}
               </CardContent>
             </Card>
@@ -340,9 +365,10 @@ const Index = () => {
                     ))}
                   </div>
                 ) : (
-                  <div className="text-center py-8">
-                    <p className="text-muted-foreground">No workouts yet. Add your first workout!</p>
-                  </div>
+                  <EmptyState 
+                    type="Workouts" 
+                    action={<AddWorkoutForm />} 
+                  />
                 )}
               </CardContent>
             </Card>
@@ -386,9 +412,10 @@ const Index = () => {
                     ))}
                   </div>
                 ) : (
-                  <div className="text-center py-8">
-                    <p className="text-muted-foreground">No personal records yet. Add your first record!</p>
-                  </div>
+                  <EmptyState 
+                    type="Records" 
+                    action={<AddRecordForm />} 
+                  />
                 )}
               </CardContent>
             </Card>
@@ -417,52 +444,5 @@ const Index = () => {
     </div>
   );
 };
-
-// Sample data (fallback if no data in Supabase yet)
-const workoutHistory = [
-  { 
-    name: "Upper Body Strength", 
-    date: "Today", 
-    duration: "45 min", 
-    intensity: "Moderate",
-    exercises: ["Bench Press", "Shoulder Press", "Tricep Extensions", "Push-ups", "Dips"] 
-  },
-  { 
-    name: "Leg Day", 
-    date: "Yesterday", 
-    duration: "60 min", 
-    intensity: "High",
-    exercises: ["Squats", "Deadlifts", "Lunges", "Leg Press", "Calf Raises", "Leg Extensions"] 
-  },
-  { 
-    name: "HIIT Cardio", 
-    date: "3 days ago", 
-    duration: "30 min", 
-    intensity: "Very High",
-    exercises: ["Burpees", "Mountain Climbers", "Jump Squats", "High Knees", "Jumping Jacks"] 
-  },
-  { 
-    name: "Back & Biceps", 
-    date: "5 days ago", 
-    duration: "50 min", 
-    intensity: "Moderate",
-    exercises: ["Pull-ups", "Barbell Rows", "Bicep Curls", "Lat Pulldowns", "Face Pulls"] 
-  },
-  { 
-    name: "Core Workout", 
-    date: "1 week ago", 
-    duration: "25 min", 
-    intensity: "Low",
-    exercises: ["Planks", "Russian Twists", "Leg Raises", "Crunches"] 
-  },
-];
-
-const personalRecords = [
-  { exercise: "Bench Press", value: "225 lbs", date: "Today", previous_value: "215 lbs", isNew: true },
-  { exercise: "Squat", value: "315 lbs", date: "Last week", previous_value: "305 lbs", isNew: true },
-  { exercise: "Deadlift", value: "405 lbs", date: "2 weeks ago", previous_value: "385 lbs", isNew: true },
-  { exercise: "Pull-ups", value: "15 reps", date: "3 weeks ago", previous_value: "12 reps", isNew: false },
-  { exercise: "5K Run", value: "22:15", date: "1 month ago", previous_value: "23:30", isNew: false },
-];
 
 export default Index;
