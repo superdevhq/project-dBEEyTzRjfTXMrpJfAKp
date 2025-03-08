@@ -17,6 +17,7 @@ import {
 import { Plus } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
+import { DATA_UPDATED_EVENT } from "@/pages/Index";
 
 interface Exercise {
   name: string;
@@ -25,12 +26,18 @@ interface Exercise {
   weight: string;
 }
 
-const AddWorkoutForm = () => {
+interface AddWorkoutFormProps {
+  onSuccess?: () => void;
+}
+
+const AddWorkoutForm = ({ onSuccess }: AddWorkoutFormProps) => {
   const { user } = useAuth();
   const { toast } = useToast();
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const [workoutName, setWorkoutName] = useState("");
+  const [workoutDuration, setWorkoutDuration] = useState("30 min");
+  const [workoutIntensity, setWorkoutIntensity] = useState("Moderate");
   const [exercises, setExercises] = useState<Exercise[]>([
     { name: "", sets: "", reps: "", weight: "" }
   ]);
@@ -76,8 +83,8 @@ const AddWorkoutForm = () => {
           user_id: user.id,
           name: workoutName,
           date: new Date().toISOString(),
-          duration: "30 min", // This would ideally be a field in the form
-          intensity: "Moderate", // This would ideally be a field in the form
+          duration: workoutDuration,
+          intensity: workoutIntensity,
           notes: notes
         }])
         .select();
@@ -107,19 +114,21 @@ const AddWorkoutForm = () => {
           description: "Your workout has been successfully recorded.",
         });
         
-        // Log for debugging
-        console.log({
-          name: workoutName,
-          date: new Date().toISOString(),
-          exercises,
-          notes
-        });
-        
         // Reset form
         setWorkoutName("");
+        setWorkoutDuration("30 min");
+        setWorkoutIntensity("Moderate");
         setExercises([{ name: "", sets: "", reps: "", weight: "" }]);
         setNotes("");
         setOpen(false);
+        
+        // Trigger data refresh
+        if (onSuccess) {
+          onSuccess();
+        }
+        
+        // Dispatch custom event to notify other components
+        window.dispatchEvent(new Event(DATA_UPDATED_EVENT));
       }
     } catch (error: any) {
       console.error("Error adding workout:", error);
@@ -160,6 +169,34 @@ const AddWorkoutForm = () => {
                 onChange={(e) => setWorkoutName(e.target.value)}
                 required
               />
+            </div>
+            
+            <div className="grid grid-cols-2 gap-4">
+              <div className="grid gap-2">
+                <Label htmlFor="workout-duration">Duration</Label>
+                <Input
+                  id="workout-duration"
+                  placeholder="e.g., 45 min"
+                  value={workoutDuration}
+                  onChange={(e) => setWorkoutDuration(e.target.value)}
+                  required
+                />
+              </div>
+              <div className="grid gap-2">
+                <Label htmlFor="workout-intensity">Intensity</Label>
+                <select
+                  id="workout-intensity"
+                  className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                  value={workoutIntensity}
+                  onChange={(e) => setWorkoutIntensity(e.target.value)}
+                  required
+                >
+                  <option value="Low">Low</option>
+                  <option value="Moderate">Moderate</option>
+                  <option value="High">High</option>
+                  <option value="Very High">Very High</option>
+                </select>
+              </div>
             </div>
             
             <div className="space-y-4">

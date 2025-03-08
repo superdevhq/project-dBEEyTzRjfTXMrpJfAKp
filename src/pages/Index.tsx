@@ -42,18 +42,41 @@ interface PersonalRecord {
   isNew: boolean;
 }
 
+// Create a custom event for data updates
+export const DATA_UPDATED_EVENT = 'fitnessDataUpdated';
+
 const Index = () => {
   const { user, signOut } = useAuth();
   const { toast } = useToast();
   const [workouts, setWorkouts] = useState<Workout[]>([]);
   const [records, setRecords] = useState<PersonalRecord[]>([]);
   const [loading, setLoading] = useState(true);
+  const [totalWorkoutTime, setTotalWorkoutTime] = useState<string>("0 min");
+  const [streak, setStreak] = useState<number>(0);
 
   // Fetch user data on component mount or when user changes
   useEffect(() => {
     if (user) {
       fetchUserData();
     }
+  }, [user]);
+
+  // Listen for data update events
+  useEffect(() => {
+    // Create event listener for data updates
+    const handleDataUpdate = () => {
+      if (user) {
+        fetchUserData();
+      }
+    };
+
+    // Add event listener
+    window.addEventListener(DATA_UPDATED_EVENT, handleDataUpdate);
+
+    // Clean up
+    return () => {
+      window.removeEventListener(DATA_UPDATED_EVENT, handleDataUpdate);
+    };
   }, [user]);
 
   const fetchUserData = async () => {
@@ -95,6 +118,12 @@ const Index = () => {
       );
 
       setWorkouts(workoutsWithExercises || []);
+      
+      // Calculate total workout time
+      calculateTotalWorkoutTime(workoutsWithExercises || []);
+      
+      // Calculate workout streak
+      calculateWorkoutStreak(workoutsData || []);
 
       // Fetch personal records
       const { data: recordsData, error: recordsError } = await supabase
@@ -133,6 +162,95 @@ const Index = () => {
     } finally {
       setLoading(false);
     }
+  };
+
+  // Calculate total workout time from all workouts
+  const calculateTotalWorkoutTime = (workouts: Workout[]) => {
+    if (!workouts.length) {
+      setTotalWorkoutTime("0 min");
+      return;
+    }
+
+    let totalMinutes = 0;
+    
+    workouts.forEach(workout => {
+      // Extract minutes from duration strings like "45 min", "1 hr 30 min", etc.
+      const durationStr = workout.duration || "0 min";
+      
+      // Handle "hr" and "min" format
+      if (durationStr.includes('hr')) {
+        const parts = durationStr.split('hr');
+        const hours = parseInt(parts[0].trim()) || 0;
+        const minutes = parseInt(parts[1].replace('min', '').trim()) || 0;
+        totalMinutes += (hours * 60) + minutes;
+      } else {
+        // Handle simple "min" format
+        const minutes = parseInt(durationStr.replace('min', '').trim()) || 0;
+        totalMinutes += minutes;
+      }
+    });
+    
+    // Format the total time
+    if (totalMinutes >= 60) {
+      const hours = Math.floor(totalMinutes / 60);
+      const minutes = totalMinutes % 60;
+      setTotalWorkoutTime(`${hours} hr${hours > 1 ? 's' : ''} ${minutes > 0 ? `${minutes} min` : ''}`);
+    } else {
+      setTotalWorkoutTime(`${totalMinutes} min`);
+    }
+  };
+
+  // Calculate workout streak
+  const calculateWorkoutStreak = (workouts: any[]) => {
+    if (!workouts.length) {
+      setStreak(0);
+      return;
+    }
+
+    // Sort workouts by date (newest first)
+    const sortedWorkouts = [...workouts].sort((a, b) => 
+      new Date(b.date).getTime() - new Date(a.date).getTime()
+    );
+
+    // Check if there's a workout today
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    
+    const mostRecentWorkoutDate = new Date(sortedWorkouts[0].date);
+    mostRecentWorkoutDate.setHours(0, 0, 0, 0);
+    
+    // If most recent workout is not today or yesterday, streak is 0
+    if (mostRecentWorkoutDate < today && !isYesterday(mostRecentWorkoutDate)) {
+      setStreak(0);
+      return;
+    }
+
+    // Count consecutive days with workouts
+    let currentStreak = 1; // Start with 1 for the most recent workout
+    let currentDate = mostRecentWorkoutDate;
+    
+    // Create a map of workout dates for faster lookup
+    const workoutDates = new Map();
+    sortedWorkouts.forEach(workout => {
+      const date = new Date(workout.date);
+      date.setHours(0, 0, 0, 0);
+      workoutDates.set(date.getTime(), true);
+    });
+    
+    // Check previous days
+    for (let i = 1; i <= 365; i++) { // Check up to a year back
+      const prevDate = new Date(currentDate);
+      prevDate.setDate(prevDate.getDate() - 1);
+      
+      if (workoutDates.has(prevDate.getTime())) {
+        currentStreak++;
+        currentDate = prevDate;
+      } else {
+        break;
+      }
+    }
+    
+    setStreak(currentStreak);
   };
 
   const handleSignOut = async () => {
@@ -237,7 +355,7 @@ const Index = () => {
               <p className="text-xs text-muted-foreground">
                 {workouts.length === 0 
                   ? "No workouts recorded yet" 
-                  : "Your lifetime workouts"}
+                  : `Total time: ${totalWorkoutTime}`}
               </p>
             </CardContent>
           </Card>
@@ -248,10 +366,10 @@ const Index = () => {
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">
-                {workouts.length === 0 ? "0 days" : "7 days"}
+                {streak} day{streak !== 1 ? 's' : ''}
               </div>
               <p className="text-xs text-muted-foreground">
-                {workouts.length === 0 
+                {streak === 0 
                   ? "Start your streak today" 
                   : "Keep it up!"}
               </p>
@@ -275,8 +393,8 @@ const Index = () => {
 
         {/* Action Buttons */}
         <div className="flex justify-end mb-6 gap-2">
-          <AddRecordForm />
-          <AddWorkoutForm />
+          <AddRecordForm onSuccess={fetchUserData} />
+          <AddWorkoutForm onSuccess={fetchUserData} />
         </div>
 
         {/* Tabs for different sections */}
@@ -320,7 +438,7 @@ const Index = () => {
                 ) : (
                   <EmptyState 
                     type="Workouts" 
-                    action={<AddWorkoutForm />} 
+                    action={<AddWorkoutForm onSuccess={fetchUserData} />} 
                   />
                 )}
               </CardContent>
@@ -367,7 +485,7 @@ const Index = () => {
                 ) : (
                   <EmptyState 
                     type="Workouts" 
-                    action={<AddWorkoutForm />} 
+                    action={<AddWorkoutForm onSuccess={fetchUserData} />} 
                   />
                 )}
               </CardContent>
@@ -414,7 +532,7 @@ const Index = () => {
                 ) : (
                   <EmptyState 
                     type="Records" 
-                    action={<AddRecordForm />} 
+                    action={<AddRecordForm onSuccess={fetchUserData} />} 
                   />
                 )}
               </CardContent>

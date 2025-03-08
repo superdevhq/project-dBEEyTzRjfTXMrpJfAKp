@@ -16,8 +16,13 @@ import {
 import { Plus, Trophy } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
+import { DATA_UPDATED_EVENT } from "@/pages/Index";
 
-const AddRecordForm = () => {
+interface AddRecordFormProps {
+  onSuccess?: () => void;
+}
+
+const AddRecordForm = ({ onSuccess }: AddRecordFormProps) => {
   const { user } = useAuth();
   const { toast } = useToast();
   const [open, setOpen] = useState(false);
@@ -59,20 +64,19 @@ const AddRecordForm = () => {
         description: "Your personal record has been successfully saved.",
       });
       
-      // Log for debugging
-      console.log({
-        exercise,
-        value,
-        previousValue,
-        date: new Date().toISOString(),
-        isNew: true
-      });
-      
       // Reset form
       setExercise("");
       setValue("");
       setPreviousValue("");
       setOpen(false);
+      
+      // Trigger data refresh
+      if (onSuccess) {
+        onSuccess();
+      }
+      
+      // Dispatch custom event to notify other components
+      window.dispatchEvent(new Event(DATA_UPDATED_EVENT));
     } catch (error: any) {
       console.error("Error adding record:", error);
       toast({
