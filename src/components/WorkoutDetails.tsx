@@ -36,7 +36,7 @@ interface WorkoutDetailsProps {
     date: string;
     duration: string;
     intensity: string;
-    exercises: string[] | Exercise[];
+    exercises?: string[] | Exercise[] | any;
     notes?: string;
   };
 }
@@ -44,9 +44,14 @@ interface WorkoutDetailsProps {
 const WorkoutDetails = ({ workout }: WorkoutDetailsProps) => {
   const [open, setOpen] = useState(false);
 
+  // Ensure exercises is an array
+  const exercises = Array.isArray(workout.exercises) ? workout.exercises : [];
+  
   // Determine if we have detailed exercise data or just names
-  const hasDetailedExercises = workout.exercises.length > 0 && 
-    typeof workout.exercises[0] !== 'string';
+  const hasDetailedExercises = exercises.length > 0 && 
+    typeof exercises[0] !== 'string' && 
+    exercises[0] !== null &&
+    typeof exercises[0] === 'object';
 
   return (
     <>
@@ -81,47 +86,52 @@ const WorkoutDetails = ({ workout }: WorkoutDetailsProps) => {
               <div className="flex items-center gap-2">
                 <Dumbbell className="h-4 w-4 text-muted-foreground" />
                 <span className="text-sm">
-                  {Array.isArray(workout.exercises) 
-                    ? hasDetailedExercises 
-                      ? `${(workout.exercises as Exercise[]).length} exercises` 
-                      : `${(workout.exercises as string[]).length} exercises`
-                    : "0 exercises"}
+                  {exercises.length} exercises
                 </span>
               </div>
             </div>
             
-            {hasDetailedExercises ? (
-              <div>
-                <h3 className="text-lg font-medium mb-2">Exercises</h3>
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Exercise</TableHead>
-                      <TableHead className="text-right">Sets</TableHead>
-                      <TableHead className="text-right">Reps</TableHead>
-                      <TableHead className="text-right">Weight</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {(workout.exercises as Exercise[]).map((exercise, index) => (
-                      <TableRow key={index}>
-                        <TableCell className="font-medium">{exercise.name}</TableCell>
-                        <TableCell className="text-right">{exercise.sets}</TableCell>
-                        <TableCell className="text-right">{exercise.reps}</TableCell>
-                        <TableCell className="text-right">{exercise.weight}</TableCell>
+            {exercises.length > 0 ? (
+              hasDetailedExercises ? (
+                <div>
+                  <h3 className="text-lg font-medium mb-2">Exercises</h3>
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Exercise</TableHead>
+                        <TableHead className="text-right">Sets</TableHead>
+                        <TableHead className="text-right">Reps</TableHead>
+                        <TableHead className="text-right">Weight</TableHead>
                       </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {exercises.map((exercise: Exercise, index: number) => (
+                        <TableRow key={index}>
+                          <TableCell className="font-medium">{exercise.name}</TableCell>
+                          <TableCell className="text-right">{exercise.sets}</TableCell>
+                          <TableCell className="text-right">{exercise.reps}</TableCell>
+                          <TableCell className="text-right">{exercise.weight}</TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+              ) : (
+                <div>
+                  <h3 className="text-lg font-medium mb-2">Exercises</h3>
+                  <div className="flex flex-wrap gap-2">
+                    {exercises.map((exercise: string, index: number) => (
+                      <Badge key={index} variant="secondary">
+                        {typeof exercise === 'string' ? exercise : 'Exercise'}
+                      </Badge>
                     ))}
-                  </TableBody>
-                </Table>
-              </div>
+                  </div>
+                </div>
+              )
             ) : (
               <div>
                 <h3 className="text-lg font-medium mb-2">Exercises</h3>
-                <div className="flex flex-wrap gap-2">
-                  {(workout.exercises as string[]).map((exercise, index) => (
-                    <Badge key={index} variant="secondary">{exercise}</Badge>
-                  ))}
-                </div>
+                <p className="text-sm text-muted-foreground">No exercises recorded for this workout.</p>
               </div>
             )}
             

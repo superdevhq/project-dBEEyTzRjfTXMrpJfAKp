@@ -89,9 +89,7 @@ const Index = () => {
           return {
             ...workout,
             date: formattedDate,
-            exercises: exercisesData.length > 0 
-              ? exercisesData 
-              : workout.exercises || []
+            exercises: exercisesData || []
           };
         })
       );
@@ -178,11 +176,8 @@ const Index = () => {
 
   // Get recent workouts (last 5)
   const recentWorkouts = workouts.slice(0, 5).map(workout => ({
-    name: workout.name,
-    date: workout.date,
-    duration: workout.duration,
-    intensity: workout.intensity,
-    exercises: Array.isArray(workout.exercises) ? workout.exercises.length : 0
+    ...workout,
+    exercises: workout.exercises || []
   }));
 
   // Count new PRs this month
@@ -290,7 +285,9 @@ const Index = () => {
                           <p className="text-sm text-muted-foreground">{workout.date}</p>
                         </div>
                         <div className="flex items-center gap-4">
-                          <div className="text-sm">{workout.duration} • {workout.exercises} exercises</div>
+                          <div className="text-sm">
+                            {workout.duration} • {Array.isArray(workout.exercises) ? workout.exercises.length : 0} exercises
+                          </div>
                           <WorkoutDetails workout={workout} />
                         </div>
                       </div>
