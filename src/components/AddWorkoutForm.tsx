@@ -25,6 +25,7 @@ interface Exercise {
   sets: string;
   reps: string;
   weight: string;
+  exercise_id?: string; // Added exercise_id field
 }
 
 interface LibraryExercise {
@@ -80,6 +81,7 @@ const AddWorkoutForm = ({ onSuccess }: AddWorkoutFormProps) => {
   const handleSelectExercise = (exercise: LibraryExercise) => {
     const updatedExercises = [...exercises];
     updatedExercises[currentExerciseIndex].name = exercise.name;
+    updatedExercises[currentExerciseIndex].exercise_id = exercise.id; // Store the exercise_id
     setExercises(updatedExercises);
   };
 
@@ -116,13 +118,14 @@ const AddWorkoutForm = ({ onSuccess }: AddWorkoutFormProps) => {
       if (workoutData && workoutData.length > 0) {
         const workoutId = workoutData[0].id;
         
-        // Insert exercises
+        // Insert exercises with exercise_id
         const exercisesWithWorkoutId = exercises.map(exercise => ({
           workout_id: workoutId,
           name: exercise.name,
           sets: exercise.sets,
           reps: exercise.reps,
-          weight: exercise.weight
+          weight: exercise.weight,
+          exercise_id: exercise.exercise_id // Include the exercise_id
         }));
         
         const { error: exercisesError } = await supabase
