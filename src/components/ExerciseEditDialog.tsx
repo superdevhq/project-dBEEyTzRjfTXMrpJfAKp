@@ -1,6 +1,6 @@
 
 import { useState } from "react";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogClose } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogClose, DialogDescription } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -27,6 +27,15 @@ const ExerciseEditDialog = ({ exercise, onSuccess }: ExerciseEditDialogProps) =>
   const [isSubmitting, setIsSubmitting] = useState(false);
   const { toast } = useToast();
 
+  // Reset name when dialog opens/closes or exercise changes
+  const handleOpenChange = (open: boolean) => {
+    setOpen(open);
+    if (open) {
+      // Reset to current exercise name when opening
+      setName(exercise.name);
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
@@ -39,15 +48,33 @@ const ExerciseEditDialog = ({ exercise, onSuccess }: ExerciseEditDialogProps) =>
       return;
     }
 
+    // If name hasn't changed, don't submit
+    if (name === exercise.name) {
+      toast({
+        title: "No changes",
+        description: "The exercise name was not changed",
+      });
+      setOpen(false);
+      return;
+    }
+
     setIsSubmitting(true);
     
     try {
-      const { error } = await supabase
+      console.log("Updating exercise:", exercise.id, "with new name:", name);
+      
+      const { data, error } = await supabase
         .from('exercises_library')
         .update({ name })
-        .eq('id', exercise.id);
+        .eq('id', exercise.id)
+        .select();
 
-      if (error) throw error;
+      if (error) {
+        console.error("Supabase error:", error);
+        throw error;
+      }
+
+      console.log("Update response:", data);
 
       toast({
         title: "Success",
@@ -73,15 +100,18 @@ const ExerciseEditDialog = ({ exercise, onSuccess }: ExerciseEditDialogProps) =>
       <Button 
         variant="ghost" 
         size="sm"
-        onClick={() => setOpen(true)}
+        onClick={() => handleOpenChange(true)}
       >
         <Pencil className="h-4 w-4" />
       </Button>
       
-      <Dialog open={open} onOpenChange={setOpen}>
+      <Dialog open={open} onOpenChange={handleOpenChange}>
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Edit Exercise</DialogTitle>
+            <DialogDescription>
+              Change the name of this exercise. This will update all workouts using this exercise.
+            </DialogDescription>
           </DialogHeader>
           
           <form onSubmit={handleSubmit}>
