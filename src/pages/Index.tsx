@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { useToast } from "@/components/ui/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
+import { useNavigate } from "react-router-dom";
 import AddWorkoutForm from "@/components/AddWorkoutForm";
 import AddRecordForm from "@/components/AddRecordForm";
 import WorkoutDetails from "@/components/WorkoutDetails";
@@ -49,6 +50,7 @@ export const DATA_UPDATED_EVENT = 'fitnessDataUpdated';
 const Index = () => {
   const { user, signOut } = useAuth();
   const { toast } = useToast();
+  const navigate = useNavigate();
   const [workouts, setWorkouts] = useState<Workout[]>([]);
   const [records, setRecords] = useState<PersonalRecord[]>([]);
   const [loading, setLoading] = useState(true);
@@ -302,6 +304,11 @@ const Index = () => {
   // Count new PRs this month
   const newPRsThisMonth = records.filter(r => r.isNew);
 
+  // Navigate to charts page
+  const navigateToCharts = () => {
+    navigate("/charts");
+  };
+
   // Empty state component
   const EmptyState = ({ type, action }: { type: string, action: React.ReactNode }) => (
     <div className="flex flex-col items-center justify-center py-12 text-center">
@@ -394,6 +401,14 @@ const Index = () => {
 
         {/* Action Buttons */}
         <div className="flex justify-end mb-6 gap-2">
+          <Button 
+            variant="outline" 
+            onClick={navigateToCharts}
+            className="flex items-center gap-1"
+          >
+            <LineChart className="h-4 w-4" />
+            View Progress Charts
+          </Button>
           <AddRecordForm onSuccess={fetchUserData} />
           <AddWorkoutForm onSuccess={fetchUserData} />
         </div>
@@ -405,7 +420,6 @@ const Index = () => {
             <TabsTrigger value="workouts">Workout History</TabsTrigger>
             <TabsTrigger value="records">Personal Records</TabsTrigger>
             <TabsTrigger value="exercises">Exercise Library</TabsTrigger>
-            <TabsTrigger value="progress">Progress Charts</TabsTrigger>
           </TabsList>
 
           {/* Dashboard Tab */}
@@ -448,7 +462,7 @@ const Index = () => {
           </TabsContent>
 
           {/* Workout History Tab */}
-          <TabsContent value="workouts" className="space-y-4">
+          <TabsContent value="workouts">
             <Card>
               <CardHeader>
                 <CardTitle>Workout History</CardTitle>
@@ -465,19 +479,17 @@ const Index = () => {
                       <div key={index} className="flex items-center justify-between border-b pb-4 last:border-0">
                         <div>
                           <p className="font-medium">{workout.name}</p>
-                          <p className="text-sm text-muted-foreground">{workout.date}</p>
-                          <p className="text-sm mt-1">
-                            {Array.isArray(workout.exercises) && workout.exercises.length > 0
-                              ? typeof workout.exercises[0] === 'string'
-                                ? (workout.exercises as string[]).join(", ")
-                                : (workout.exercises as Exercise[]).map(e => e.name).join(", ")
-                              : "No exercises recorded"}
-                          </p>
+                          <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                            <span>{workout.date}</span>
+                            <span>•</span>
+                            <span>{workout.duration}</span>
+                            <span>•</span>
+                            <span>{workout.intensity} intensity</span>
+                          </div>
                         </div>
-                        <div className="flex flex-col items-end gap-1">
-                          <div className="text-sm text-right">
-                            <p>{workout.duration}</p>
-                            <p className="text-muted-foreground">{workout.intensity}</p>
+                        <div className="flex items-center gap-2">
+                          <div className="text-sm bg-gray-100 px-2 py-1 rounded">
+                            {Array.isArray(workout.exercises) ? workout.exercises.length : 0} exercises
                           </div>
                           <WorkoutDetails workout={workout} />
                         </div>
@@ -495,7 +507,7 @@ const Index = () => {
           </TabsContent>
 
           {/* Personal Records Tab */}
-          <TabsContent value="records" className="space-y-4">
+          <TabsContent value="records">
             <Card>
               <CardHeader>
                 <CardTitle>Personal Records</CardTitle>
@@ -512,18 +524,20 @@ const Index = () => {
                       <div key={index} className="flex items-center justify-between border-b pb-4 last:border-0">
                         <div>
                           <p className="font-medium">{record.exercise}</p>
-                          <p className="text-sm text-muted-foreground">Achieved on {record.date}</p>
+                          <p className="text-sm text-muted-foreground">{record.date}</p>
                         </div>
-                        <div className="flex items-center gap-2">
-                          <div className="text-right">
-                            <p className="font-bold">{record.value}</p>
-                            <p className="text-xs text-muted-foreground">
-                              {record.previous_value && `Previous: ${record.previous_value}`}
-                            </p>
+                        <div className="flex items-center gap-4">
+                          <div className="flex flex-col items-end">
+                            <div className="font-medium">{record.value}</div>
+                            {record.previous && (
+                              <div className="flex items-center text-xs text-green-600">
+                                <ChevronUp className="h-3 w-3 mr-1" />
+                                from {record.previous}
+                              </div>
+                            )}
                           </div>
                           {record.isNew && (
-                            <div className="bg-green-100 text-green-800 text-xs px-2 py-1 rounded-full flex items-center">
-                              <ChevronUp className="h-3 w-3 mr-1" />
+                            <div className="bg-blue-100 text-blue-800 text-xs px-2 py-1 rounded-full">
                               New
                             </div>
                           )}
@@ -542,25 +556,14 @@ const Index = () => {
           </TabsContent>
 
           {/* Exercise Library Tab */}
-          <TabsContent value="exercises" className="space-y-4">
-            <ExerciseList />
-          </TabsContent>
-
-          {/* Progress Charts Tab */}
-          <TabsContent value="progress" className="space-y-4">
+          <TabsContent value="exercises">
             <Card>
               <CardHeader>
-                <CardTitle>Progress Over Time</CardTitle>
-                <CardDescription>Track your improvements</CardDescription>
+                <CardTitle>Exercise Library</CardTitle>
+                <CardDescription>Browse and manage exercises</CardDescription>
               </CardHeader>
-              <CardContent className="h-80 flex items-center justify-center">
-                <div className="flex flex-col items-center text-center">
-                  <LineChart className="h-16 w-16 text-muted-foreground mb-4" />
-                  <h3 className="text-lg font-medium">Progress Charts Coming Soon</h3>
-                  <p className="text-sm text-muted-foreground max-w-md">
-                    Visual progress tracking will be available once you've logged more workouts.
-                  </p>
-                </div>
+              <CardContent>
+                <ExerciseList />
               </CardContent>
             </Card>
           </TabsContent>
