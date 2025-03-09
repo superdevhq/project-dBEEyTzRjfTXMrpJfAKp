@@ -8,6 +8,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/components/ui/use-toast";
 import { DATA_UPDATED_EVENT } from "@/pages/Index";
+import ExerciseEditDialog from "@/components/ExerciseEditDialog";
 
 interface Exercise {
   id: string;
@@ -155,15 +156,21 @@ const ExerciseList = () => {
                       <p className="text-sm text-muted-foreground mt-1">{exercise.description}</p>
                     )}
                   </div>
-                  <Button 
-                    variant="ghost" 
-                    size="sm" 
-                    className="gap-1"
-                    onClick={() => handleAddToWorkout(exercise)}
-                  >
-                    <Plus className="h-4 w-4" />
-                    Add
-                  </Button>
+                  <div className="flex items-center gap-1">
+                    <ExerciseEditDialog 
+                      exercise={exercise} 
+                      onSuccess={fetchExercises} 
+                    />
+                    <Button 
+                      variant="ghost" 
+                      size="sm" 
+                      className="gap-1"
+                      onClick={() => handleAddToWorkout(exercise)}
+                    >
+                      <Plus className="h-4 w-4" />
+                      Add
+                    </Button>
+                  </div>
                 </div>
               ))}
             </div>
