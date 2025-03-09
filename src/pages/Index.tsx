@@ -2,7 +2,7 @@
 import { useEffect, useState } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Activity, Award, Calendar, ChevronUp, Dumbbell, LineChart, LogOut, Plus, ListFilter } from "lucide-react";
+import { Activity, Award, Calendar, ChevronUp, Dumbbell, LineChart, LogOut, Plus, ListFilter, Settings } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/components/ui/use-toast";
 import { supabase } from "@/integrations/supabase/client";
@@ -331,6 +331,12 @@ const Index = () => {
               <Button variant="outline" size="sm" className="flex items-center gap-1">
                 <LineChart className="h-4 w-4" />
                 Charts
+              </Button>
+            </Link>
+            <Link to="/settings">
+              <Button variant="outline" size="sm" className="flex items-center gap-1">
+                <Settings className="h-4 w-4" />
+                Settings
               </Button>
             </Link>
             <span className="text-sm text-gray-600">
