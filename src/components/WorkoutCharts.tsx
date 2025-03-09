@@ -5,8 +5,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/components/ui/use-toast";
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, BarChart, Bar } from "recharts";
-import { format, subDays, subMonths } from "date-fns";
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from "recharts";
 
 interface ExerciseProgress {
   id: string;
@@ -35,172 +34,50 @@ interface Exercise {
   name: string;
 }
 
+// Sample data for demonstration
+const sampleExerciseProgress: ExerciseProgress[] = [
+  { id: '1', exercise_id: '1', exercise_name: 'Bench Press', date: 'Mar 01', weight: 135, reps: 8, sets: 3 },
+  { id: '2', exercise_id: '1', exercise_name: 'Bench Press', date: 'Mar 08', weight: 145, reps: 8, sets: 3 },
+  { id: '3', exercise_id: '1', exercise_name: 'Bench Press', date: 'Mar 15', weight: 155, reps: 8, sets: 3 },
+  { id: '4', exercise_id: '1', exercise_name: 'Bench Press', date: 'Mar 22', weight: 165, reps: 6, sets: 3 },
+  { id: '5', exercise_id: '1', exercise_name: 'Bench Press', date: 'Mar 29', weight: 175, reps: 5, sets: 3 },
+];
+
+const sampleBodyMeasurements: BodyMeasurement[] = [
+  { id: '1', date: 'Mar 01', weight: 180, body_fat_percentage: 18, chest: 42, waist: 34, hips: 40, biceps: 14, thighs: 22 },
+  { id: '2', date: 'Mar 08', weight: 178, body_fat_percentage: 17.5, chest: 42, waist: 33.5, hips: 40, biceps: 14.2, thighs: 22 },
+  { id: '3', date: 'Mar 15', weight: 177, body_fat_percentage: 17, chest: 42, waist: 33, hips: 40, biceps: 14.4, thighs: 22.2 },
+  { id: '4', date: 'Mar 22', weight: 175, body_fat_percentage: 16.5, chest: 42.5, waist: 32.5, hips: 39.5, biceps: 14.6, thighs: 22.4 },
+  { id: '5', date: 'Mar 29', weight: 173, body_fat_percentage: 16, chest: 43, waist: 32, hips: 39, biceps: 15, thighs: 22.6 },
+];
+
+const sampleExercises: Exercise[] = [
+  { id: '1', name: 'Bench Press' },
+  { id: '2', name: 'Squat' },
+  { id: '3', name: 'Deadlift' },
+  { id: '4', name: 'Pull-up' },
+  { id: '5', name: 'Shoulder Press' },
+];
+
 const WorkoutCharts = () => {
   const [activeTab, setActiveTab] = useState("exercise-progress");
   const [timeRange, setTimeRange] = useState("30days");
-  const [selectedExercise, setSelectedExercise] = useState<string | null>(null);
+  const [selectedExercise, setSelectedExercise] = useState<string>("1");
   const [selectedMetric, setSelectedMetric] = useState("weight");
   const [selectedBodyMetric, setSelectedBodyMetric] = useState("weight");
-  const [exerciseProgress, setExerciseProgress] = useState<ExerciseProgress[]>([]);
-  const [bodyMeasurements, setBodyMeasurements] = useState<BodyMeasurement[]>([]);
-  const [exercises, setExercises] = useState<Exercise[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [exerciseProgress, setExerciseProgress] = useState<ExerciseProgress[]>(sampleExerciseProgress);
+  const [bodyMeasurements, setBodyMeasurements] = useState<BodyMeasurement[]>(sampleBodyMeasurements);
+  const [exercises, setExercises] = useState<Exercise[]>(sampleExercises);
+  const [loading, setLoading] = useState(false);
   const { toast } = useToast();
 
-  // Fetch exercises for the dropdown
+  // In a real implementation, we would fetch data from Supabase here
   useEffect(() => {
-    const fetchExercises = async () => {
-      try {
-        const { data, error } = await supabase
-          .from('exercises_library')
-          .select('id, name')
-          .order('name');
-
-        if (error) throw error;
-
-        if (data && data.length > 0) {
-          setExercises(data);
-          setSelectedExercise(data[0].id);
-        }
-      } catch (error) {
-        console.error('Error fetching exercises:', error);
-        toast({
-          title: "Error",
-          description: "Failed to load exercises",
-          variant: "destructive",
-        });
-      }
-    };
-
-    fetchExercises();
-  }, [toast]);
-
-  // Calculate date range based on selected time range
-  const getDateRange = () => {
-    const now = new Date();
-    let startDate;
-
-    switch (timeRange) {
-      case "7days":
-        startDate = subDays(now, 7);
-        break;
-      case "30days":
-        startDate = subDays(now, 30);
-        break;
-      case "3months":
-        startDate = subMonths(now, 3);
-        break;
-      case "6months":
-        startDate = subMonths(now, 6);
-        break;
-      case "1year":
-        startDate = subMonths(now, 12);
-        break;
-      default:
-        startDate = subDays(now, 30);
-    }
-
-    return {
-      start: startDate.toISOString(),
-      end: now.toISOString(),
-    };
-  };
-
-  // Fetch exercise progress data
-  useEffect(() => {
-    if (!selectedExercise) return;
-
-    const fetchExerciseProgress = async () => {
-      setLoading(true);
-      const { start, end } = getDateRange();
-
-      try {
-        const { data, error } = await supabase
-          .from('exercise_progress')
-          .select(`
-            id,
-            exercise_id,
-            date,
-            weight,
-            reps,
-            sets,
-            exercises_library(name)
-          `)
-          .eq('exercise_id', selectedExercise)
-          .gte('date', start)
-          .lte('date', end)
-          .order('date');
-
-        if (error) throw error;
-
-        if (data) {
-          const formattedData = data.map(item => ({
-            id: item.id,
-            exercise_id: item.exercise_id,
-            exercise_name: item.exercises_library.name,
-            date: format(new Date(item.date), 'MMM dd'),
-            weight: item.weight,
-            reps: item.reps,
-            sets: item.sets
-          }));
-          
-          setExerciseProgress(formattedData);
-        }
-      } catch (error) {
-        console.error('Error fetching exercise progress:', error);
-        toast({
-          title: "Error",
-          description: "Failed to load exercise progress data",
-          variant: "destructive",
-        });
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchExerciseProgress();
-  }, [selectedExercise, timeRange, toast]);
-
-  // Fetch body measurements data
-  useEffect(() => {
-    const fetchBodyMeasurements = async () => {
-      setLoading(true);
-      const { start, end } = getDateRange();
-
-      try {
-        const { data, error } = await supabase
-          .from('body_measurements')
-          .select('*')
-          .gte('date', start)
-          .lte('date', end)
-          .order('date');
-
-        if (error) throw error;
-
-        if (data) {
-          const formattedData = data.map(item => ({
-            ...item,
-            date: format(new Date(item.date), 'MMM dd')
-          }));
-          
-          setBodyMeasurements(formattedData);
-        }
-      } catch (error) {
-        console.error('Error fetching body measurements:', error);
-        toast({
-          title: "Error",
-          description: "Failed to load body measurement data",
-          variant: "destructive",
-        });
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    if (activeTab === "body-measurements") {
-      fetchBodyMeasurements();
-    }
-  }, [activeTab, timeRange, toast]);
+    // This would be replaced with actual data fetching once the tables are created
+    setExercises(sampleExercises);
+    setExerciseProgress(sampleExerciseProgress);
+    setBodyMeasurements(sampleBodyMeasurements);
+  }, []);
 
   // Get the appropriate data for the selected metric
   const getChartData = () => {
@@ -269,7 +146,7 @@ const WorkoutCharts = () => {
             {activeTab === "exercise-progress" && (
               <>
                 <div className="w-full md:w-1/3">
-                  <Select value={selectedExercise || ""} onValueChange={setSelectedExercise}>
+                  <Select value={selectedExercise} onValueChange={setSelectedExercise}>
                     <SelectTrigger>
                       <SelectValue placeholder="Select exercise" />
                     </SelectTrigger>
@@ -318,16 +195,12 @@ const WorkoutCharts = () => {
           </div>
 
           <TabsContent value="exercise-progress" className="mt-4">
-            {loading ? (
-              <div className="flex justify-center items-center h-64">
-                <p>Loading data...</p>
-              </div>
-            ) : exerciseProgress.length === 0 ? (
-              <div className="flex justify-center items-center h-64">
-                <p>No data available for the selected exercise and time range.</p>
-              </div>
-            ) : (
-              <div className="h-80 mt-4">
+            <div className="h-[300px] w-full mt-4">
+              {loading ? (
+                <div className="flex items-center justify-center h-full">
+                  <p>Loading chart data...</p>
+                </div>
+              ) : (
                 <ResponsiveContainer width="100%" height="100%">
                   <LineChart
                     data={getChartData()}
@@ -346,21 +219,17 @@ const WorkoutCharts = () => {
                     />
                   </LineChart>
                 </ResponsiveContainer>
-              </div>
-            )}
+              )}
+            </div>
           </TabsContent>
 
           <TabsContent value="body-measurements" className="mt-4">
-            {loading ? (
-              <div className="flex justify-center items-center h-64">
-                <p>Loading data...</p>
-              </div>
-            ) : bodyMeasurements.length === 0 ? (
-              <div className="flex justify-center items-center h-64">
-                <p>No body measurement data available for the selected time range.</p>
-              </div>
-            ) : (
-              <div className="h-80 mt-4">
+            <div className="h-[300px] w-full mt-4">
+              {loading ? (
+                <div className="flex items-center justify-center h-full">
+                  <p>Loading chart data...</p>
+                </div>
+              ) : (
                 <ResponsiveContainer width="100%" height="100%">
                   <LineChart
                     data={getChartData()}
@@ -379,8 +248,8 @@ const WorkoutCharts = () => {
                     />
                   </LineChart>
                 </ResponsiveContainer>
-              </div>
-            )}
+              )}
+            </div>
           </TabsContent>
         </Tabs>
       </CardContent>

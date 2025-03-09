@@ -1,15 +1,18 @@
 
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { useAuth } from "@/contexts/AuthContext";
-import WorkoutCharts from "@/components/WorkoutCharts";
 import { Button } from "@/components/ui/button";
-import { PlusCircle } from "lucide-react";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import WorkoutCharts from "@/components/WorkoutCharts";
+import AddBodyMeasurementForm from "@/components/AddBodyMeasurementForm";
+import AddExerciseProgressForm from "@/components/AddExerciseProgressForm";
+import { useAuth } from "@/contexts/AuthContext";
+import { DATA_UPDATED_EVENT } from "./Index";
 
-const ChartsPage = () => {
+const Charts = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
+  const [refreshKey, setRefreshKey] = useState(0);
 
   useEffect(() => {
     if (!user) {
@@ -17,53 +20,41 @@ const ChartsPage = () => {
     }
   }, [user, navigate]);
 
-  const handleAddProgress = () => {
-    navigate("/add-progress");
+  const handleDataUpdate = () => {
+    // Trigger a refresh of the charts
+    setRefreshKey(prev => prev + 1);
+    
+    // Dispatch the data updated event to refresh other components if needed
+    window.dispatchEvent(new CustomEvent(DATA_UPDATED_EVENT));
   };
-
-  const handleAddMeasurement = () => {
-    navigate("/add-measurement");
-  };
-
-  if (!user) {
-    return null;
-  }
 
   return (
-    <div className="container mx-auto py-6 px-4">
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6">
-        <h1 className="text-3xl font-bold">Progress Tracking</h1>
-        <Tabs defaultValue="progress" className="w-full max-w-md">
-          <TabsList className="grid w-full grid-cols-2">
-            <TabsTrigger value="progress">Exercise Progress</TabsTrigger>
-            <TabsTrigger value="measurements">Body Measurements</TabsTrigger>
-          </TabsList>
-          <TabsContent value="progress">
-            <Button 
-              onClick={handleAddProgress}
-              className="mt-4"
-            >
-              <PlusCircle className="mr-2 h-4 w-4" />
-              Add Exercise Progress
-            </Button>
-          </TabsContent>
-          <TabsContent value="measurements">
-            <Button 
-              onClick={handleAddMeasurement}
-              className="mt-4"
-            >
-              <PlusCircle className="mr-2 h-4 w-4" />
-              Add Body Measurement
-            </Button>
-          </TabsContent>
-        </Tabs>
+    <div className="container mx-auto py-8 px-4">
+      <div className="flex justify-between items-center mb-6">
+        <h1 className="text-3xl font-bold">Progress Charts</h1>
+        <Button onClick={() => navigate("/")} variant="outline">Back to Dashboard</Button>
       </div>
 
       <div className="grid grid-cols-1 gap-6">
-        <WorkoutCharts />
+        <WorkoutCharts key={refreshKey} />
+
+        <Card>
+          <CardHeader>
+            <CardTitle>Add Progress Data</CardTitle>
+            <CardDescription>
+              Record your exercise progress and body measurements to see them in the charts
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="flex flex-col md:flex-row gap-4">
+              <AddExerciseProgressForm onSuccess={handleDataUpdate} />
+              <AddBodyMeasurementForm onSuccess={handleDataUpdate} />
+            </div>
+          </CardContent>
+        </Card>
       </div>
     </div>
   );
 };
 
-export default ChartsPage;
+export default Charts;

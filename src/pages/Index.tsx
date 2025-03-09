@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { useToast } from "@/components/ui/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
-import { useNavigate } from "react-router-dom";
+import { Link } from "react-router-dom";
 import AddWorkoutForm from "@/components/AddWorkoutForm";
 import AddRecordForm from "@/components/AddRecordForm";
 import WorkoutDetails from "@/components/WorkoutDetails";
@@ -50,7 +50,6 @@ export const DATA_UPDATED_EVENT = 'fitnessDataUpdated';
 const Index = () => {
   const { user, signOut } = useAuth();
   const { toast } = useToast();
-  const navigate = useNavigate();
   const [workouts, setWorkouts] = useState<Workout[]>([]);
   const [records, setRecords] = useState<PersonalRecord[]>([]);
   const [loading, setLoading] = useState(true);
@@ -304,11 +303,6 @@ const Index = () => {
   // Count new PRs this month
   const newPRsThisMonth = records.filter(r => r.isNew);
 
-  // Navigate to charts page
-  const navigateToCharts = () => {
-    navigate("/charts");
-  };
-
   // Empty state component
   const EmptyState = ({ type, action }: { type: string, action: React.ReactNode }) => (
     <div className="flex flex-col items-center justify-center py-12 text-center">
@@ -333,6 +327,12 @@ const Index = () => {
             <h1 className="text-xl font-bold">FitTrack</h1>
           </div>
           <div className="flex items-center gap-4">
+            <Link to="/charts">
+              <Button variant="outline" size="sm" className="flex items-center gap-1">
+                <LineChart className="h-4 w-4" />
+                Charts
+              </Button>
+            </Link>
             <span className="text-sm text-gray-600">
               Welcome, {user?.email?.split('@')[0]}!
             </span>
@@ -401,171 +401,102 @@ const Index = () => {
 
         {/* Action Buttons */}
         <div className="flex justify-end mb-6 gap-2">
-          <Button 
-            variant="outline" 
-            onClick={navigateToCharts}
-            className="flex items-center gap-1"
-          >
-            <LineChart className="h-4 w-4" />
-            View Progress Charts
-          </Button>
           <AddRecordForm onSuccess={fetchUserData} />
           <AddWorkoutForm onSuccess={fetchUserData} />
         </div>
 
-        {/* Tabs for different sections */}
-        <Tabs defaultValue="dashboard" className="space-y-4">
+        {/* Main Tabs */}
+        <Tabs defaultValue="workouts" className="space-y-4">
           <TabsList>
-            <TabsTrigger value="dashboard">Dashboard</TabsTrigger>
-            <TabsTrigger value="workouts">Workout History</TabsTrigger>
+            <TabsTrigger value="workouts">Workouts</TabsTrigger>
             <TabsTrigger value="records">Personal Records</TabsTrigger>
             <TabsTrigger value="exercises">Exercise Library</TabsTrigger>
           </TabsList>
-
-          {/* Dashboard Tab */}
-          <TabsContent value="dashboard" className="space-y-4">
-            <Card>
-              <CardHeader>
-                <CardTitle>Recent Activity</CardTitle>
-                <CardDescription>Your last 5 workouts</CardDescription>
-              </CardHeader>
-              <CardContent>
-                {loading ? (
-                  <div className="flex justify-center py-8">
-                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
-                  </div>
-                ) : recentWorkouts.length > 0 ? (
-                  <div className="space-y-4">
-                    {recentWorkouts.map((workout, index) => (
-                      <div key={index} className="flex items-center justify-between border-b pb-2 last:border-0">
-                        <div>
-                          <p className="font-medium">{workout.name}</p>
-                          <p className="text-sm text-muted-foreground">{workout.date}</p>
-                        </div>
-                        <div className="flex items-center gap-4">
-                          <div className="text-sm">
-                            {workout.duration} • {Array.isArray(workout.exercises) ? workout.exercises.length : 0} exercises
-                          </div>
-                          <WorkoutDetails workout={workout} />
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                ) : (
-                  <EmptyState 
-                    type="Workouts" 
-                    action={<AddWorkoutForm onSuccess={fetchUserData} />} 
+          
+          {/* Workouts Tab */}
+          <TabsContent value="workouts" className="space-y-4">
+            {loading ? (
+              <div className="flex justify-center py-8">
+                <p>Loading workouts...</p>
+              </div>
+            ) : workouts.length === 0 ? (
+              <EmptyState 
+                type="Workouts" 
+                action={<AddWorkoutForm onSuccess={fetchUserData} />} 
+              />
+            ) : (
+              <div className="space-y-4">
+                {recentWorkouts.map((workout) => (
+                  <WorkoutDetails 
+                    key={workout.id} 
+                    workout={workout} 
+                    onDelete={fetchUserData} 
                   />
+                ))}
+                
+                {workouts.length > 5 && (
+                  <div className="flex justify-center pt-4">
+                    <Button variant="outline" size="sm" className="flex items-center gap-1">
+                      <ChevronUp className="h-4 w-4" />
+                      View All ({workouts.length})
+                    </Button>
+                  </div>
                 )}
-              </CardContent>
-            </Card>
+              </div>
+            )}
           </TabsContent>
-
-          {/* Workout History Tab */}
-          <TabsContent value="workouts">
-            <Card>
-              <CardHeader>
-                <CardTitle>Workout History</CardTitle>
-                <CardDescription>All your recorded workouts</CardDescription>
-              </CardHeader>
-              <CardContent>
-                {loading ? (
-                  <div className="flex justify-center py-8">
-                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
-                  </div>
-                ) : workouts.length > 0 ? (
-                  <div className="space-y-4">
-                    {workouts.map((workout, index) => (
-                      <div key={index} className="flex items-center justify-between border-b pb-4 last:border-0">
-                        <div>
-                          <p className="font-medium">{workout.name}</p>
-                          <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                            <span>{workout.date}</span>
-                            <span>•</span>
-                            <span>{workout.duration}</span>
-                            <span>•</span>
-                            <span>{workout.intensity} intensity</span>
+          
+          {/* Records Tab */}
+          <TabsContent value="records" className="space-y-4">
+            {loading ? (
+              <div className="flex justify-center py-8">
+                <p>Loading records...</p>
+              </div>
+            ) : records.length === 0 ? (
+              <EmptyState 
+                type="Personal Records" 
+                action={<AddRecordForm onSuccess={fetchUserData} />} 
+              />
+            ) : (
+              <div className="space-y-4">
+                <div className="flex justify-between items-center">
+                  <h3 className="text-lg font-medium">Your Personal Records</h3>
+                  <Button variant="outline" size="sm" className="flex items-center gap-1">
+                    <ListFilter className="h-4 w-4" />
+                    Filter
+                  </Button>
+                </div>
+                
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {records.map((record) => (
+                    <Card key={record.id}>
+                      <CardContent className="p-4">
+                        <div className="flex justify-between items-start">
+                          <div>
+                            <h4 className="font-medium">{record.exercise}</h4>
+                            <p className="text-sm text-muted-foreground">{record.date}</p>
                           </div>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <div className="text-sm bg-gray-100 px-2 py-1 rounded">
-                            {Array.isArray(workout.exercises) ? workout.exercises.length : 0} exercises
-                          </div>
-                          <WorkoutDetails workout={workout} />
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                ) : (
-                  <EmptyState 
-                    type="Workouts" 
-                    action={<AddWorkoutForm onSuccess={fetchUserData} />} 
-                  />
-                )}
-              </CardContent>
-            </Card>
-          </TabsContent>
-
-          {/* Personal Records Tab */}
-          <TabsContent value="records">
-            <Card>
-              <CardHeader>
-                <CardTitle>Personal Records</CardTitle>
-                <CardDescription>Your best performances</CardDescription>
-              </CardHeader>
-              <CardContent>
-                {loading ? (
-                  <div className="flex justify-center py-8">
-                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
-                  </div>
-                ) : records.length > 0 ? (
-                  <div className="space-y-4">
-                    {records.map((record, index) => (
-                      <div key={index} className="flex items-center justify-between border-b pb-4 last:border-0">
-                        <div>
-                          <p className="font-medium">{record.exercise}</p>
-                          <p className="text-sm text-muted-foreground">{record.date}</p>
-                        </div>
-                        <div className="flex items-center gap-4">
-                          <div className="flex flex-col items-end">
-                            <div className="font-medium">{record.value}</div>
+                          <div className="text-right">
+                            <div className="font-bold">{record.value}</div>
                             {record.previous && (
-                              <div className="flex items-center text-xs text-green-600">
-                                <ChevronUp className="h-3 w-3 mr-1" />
+                              <div className="text-xs text-green-600 flex items-center justify-end gap-1">
+                                <ChevronUp className="h-3 w-3" />
                                 from {record.previous}
                               </div>
                             )}
                           </div>
-                          {record.isNew && (
-                            <div className="bg-blue-100 text-blue-800 text-xs px-2 py-1 rounded-full">
-                              New
-                            </div>
-                          )}
                         </div>
-                      </div>
-                    ))}
-                  </div>
-                ) : (
-                  <EmptyState 
-                    type="Records" 
-                    action={<AddRecordForm onSuccess={fetchUserData} />} 
-                  />
-                )}
-              </CardContent>
-            </Card>
+                      </CardContent>
+                    </Card>
+                  ))}
+                </div>
+              </div>
+            )}
           </TabsContent>
-
-          {/* Exercise Library Tab */}
-          <TabsContent value="exercises">
-            <Card>
-              <CardHeader>
-                <CardTitle>Exercise Library</CardTitle>
-                <CardDescription>Browse and manage exercises</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <ExerciseList />
-              </CardContent>
-            </Card>
+          
+          {/* Exercises Tab */}
+          <TabsContent value="exercises" className="space-y-4">
+            <ExerciseList />
           </TabsContent>
         </Tabs>
       </main>
