@@ -10,7 +10,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { Link } from "react-router-dom";
 import AddWorkoutForm from "@/components/AddWorkoutForm";
 import AddRecordForm from "@/components/AddRecordForm";
-import WorkoutDetails from "@/components/WorkoutDetails";
+import WorkoutCard from "@/components/WorkoutCard";
 import ExerciseList from "@/components/ExerciseList";
 
 // Types for our data
@@ -55,6 +55,7 @@ const Index = () => {
   const [loading, setLoading] = useState(true);
   const [totalWorkoutTime, setTotalWorkoutTime] = useState<string>("0 min");
   const [streak, setStreak] = useState<number>(0);
+  const [showAllWorkouts, setShowAllWorkouts] = useState(false);
 
   // Fetch user data on component mount or when user changes
   useEffect(() => {
@@ -294,11 +295,8 @@ const Index = () => {
     return date >= oneMonthAgo;
   };
 
-  // Get recent workouts (last 5)
-  const recentWorkouts = workouts.slice(0, 5).map(workout => ({
-    ...workout,
-    exercises: workout.exercises || []
-  }));
+  // Get workouts to display based on showAllWorkouts state
+  const displayWorkouts = showAllWorkouts ? workouts : workouts.slice(0, 5);
 
   // Count new PRs this month
   const newPRsThisMonth = records.filter(r => r.isNew);
@@ -432,8 +430,8 @@ const Index = () => {
               />
             ) : (
               <div className="space-y-4">
-                {recentWorkouts.map((workout) => (
-                  <WorkoutDetails 
+                {displayWorkouts.map((workout) => (
+                  <WorkoutCard 
                     key={workout.id} 
                     workout={workout} 
                     onDelete={fetchUserData} 
@@ -442,9 +440,20 @@ const Index = () => {
                 
                 {workouts.length > 5 && (
                   <div className="flex justify-center pt-4">
-                    <Button variant="outline" size="sm" className="flex items-center gap-1">
-                      <ChevronUp className="h-4 w-4" />
-                      View All ({workouts.length})
+                    <Button 
+                      variant="outline" 
+                      size="sm" 
+                      className="flex items-center gap-1"
+                      onClick={() => setShowAllWorkouts(!showAllWorkouts)}
+                    >
+                      {showAllWorkouts ? (
+                        <>Show Less</>
+                      ) : (
+                        <>
+                          <ChevronUp className="h-4 w-4" />
+                          View All ({workouts.length})
+                        </>
+                      )}
                     </Button>
                   </div>
                 )}
